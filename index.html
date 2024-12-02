@@ -51,36 +51,41 @@
                <div id="summary" class="text-center"></div>
           </div>
 
-          <script src="script.js"></script>
           <script>
-               let budget = 0;
-               let totalExpense = 0;
-
                $(document).ready(function () {
+                    let budget = 0;
+                    let expenses = [];
+
                     $("#setBudgetBtn").click(function () {
                          budget = parseFloat($("#budget").val());
                          if (isNaN(budget) || budget <= 0) {
-                              $("#budgetWarning").text("Please enter a valid budget amount.");
+                              $("#budgetWarning").text("Please enter a valid budget amount.").removeClass("text-success").addClass("text-danger");
                          } else {
-                              $("#budgetWarning").text(`Budget set to $${budget}.`).addClass("text-success");
+                              $("#budgetWarning")
+                                   .text(`Budget set to $${budget.toFixed(2)}.`)
+                                   .removeClass("text-danger")
+                                   .addClass("text-success");
                          }
                     });
 
                     $("#addExpenseBtn").click(function () {
-                         const category = $("#category").val();
+                         const category = $("#category").val().trim();
                          const amount = parseFloat($("#amount").val());
-                         const description = $("#description").val();
+                         const description = $("#description").val().trim();
 
-                         if (!category || isNaN(amount) || amount <= 0) {
+                         if (!category || isNaN(amount) || amount <= 0 || !description) {
                               alert("Please fill in all fields with valid data.");
                               return;
                          }
 
-                         totalExpense += amount;
+                         const expense = { category, amount, description, date: new Date() };
+                         expenses.push(expense);
+
                          $("#expenseList").append(
                               `<li class="list-group-item">
-                    <strong>${category}</strong>: $${amount} - ${description}
-                </li>`
+                <strong>${expense.category}</strong>: $${expense.amount.toFixed(2)} - ${expense.description}
+                <small class="text-muted float-end">${expense.date.toLocaleDateString()}</small>
+            </li>`
                          );
 
                          updateWarnings();
@@ -90,28 +95,34 @@
 
                     function updateWarnings() {
                          const warnings = $("#warnings");
-                         warnings.text("");
+                         warnings.removeClass("text-danger text-warning text-success"); // Clear previous classes
 
-                         if (totalExpense >= 0.8 * budget && totalExpense < budget) {
-                              warnings.text("Warning: You have spent 80% of your budget!");
-                         } else if (totalExpense >= budget) {
-                              warnings.text("Critical: You have exceeded your budget!");
-                         } else if (totalExpense < budget) {
-                              warnings.text("You are within your budget. Consider saving 10%.").addClass("text-success");
+                         const totalExpense = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+                         const percentSpent = (totalExpense / budget) * 100;
+
+                         if (budget === 0) {
+                              warnings.text("Please set a budget first.").addClass("text-warning");
+                         } else if (percentSpent >= 100) {
+                              warnings.text(`Critical: Exceeded budget by $${(totalExpense - budget).toFixed(2)} (${percentSpent.toFixed(1)}% spent)`).addClass("text-danger");
+                         } else if (percentSpent >= 80) {
+                              warnings.text(`Warning: ${percentSpent.toFixed(1)}% of budget spent. Slow down expenses!`).addClass("text-warning");
+                         } else if (percentSpent >= 50) {
+                              warnings.text(`You've spent ${percentSpent.toFixed(1)}% of your budget. Stay mindful.`).addClass("text-warning");
+                         } else {
+                              warnings.text(`You are within budget. Currently at ${percentSpent.toFixed(1)}% of total.`).addClass("text-success");
                          }
                     }
 
                     function updateSummary() {
+                         const totalExpense = expenses.reduce((sum, expense) => sum + expense.amount, 0);
                          $("#summary").html(
                               `<h5>Total Expenses: $${totalExpense.toFixed(2)}</h5>
-                 <h5>Remaining Budget: $${(budget - totalExpense).toFixed(2)}</h5>`
+            <h5>Remaining Budget: $${(budget - totalExpense).toFixed(2)}</h5>`
                          );
                     }
 
                     function clearInputs() {
-                         $("#category").val("");
-                         $("#amount").val("");
-                         $("#description").val("");
+                         $("#category, #amount, #description").val("");
                     }
                });
           </script>
